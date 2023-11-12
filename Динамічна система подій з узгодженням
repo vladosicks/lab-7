@@ -1,0 +1,70 @@
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+
+class EventSystem
+{
+    private Dictionary<string, List<Action<string>>> eventHandlers = new Dictionary<string, List<Action<string>>>();
+    private object lockObject = new object();
+
+    public void RegisterHandler(string eventName, Action<string> handler)
+    {
+        lock (lockObject)
+        {
+            if (!eventHandlers.ContainsKey(eventName))
+                eventHandlers[eventName] = new List<Action<string>>();
+
+            eventHandlers[eventName].Add(handler);
+        }
+    }
+
+    public void UnregisterHandler(string eventName, Action<string> handler)
+    {
+        lock (lockObject)
+        {
+            if (eventHandlers.ContainsKey(eventName))
+                eventHandlers[eventName].Remove(handler);
+        }
+    }
+
+    public void RaiseEvent(string eventName, string eventData)
+    {
+        lock (lockObject)
+        {
+            if (eventHandlers.ContainsKey(eventName))
+            {
+                foreach (var handler in eventHandlers[eventName])
+                {
+                    Task.Run(() => handler(eventData));
+                }
+            }
+        }
+    }
+}
+
+class DistributedEventSubscriber
+{
+    static void Main()
+    {
+        EventSystem eventSystem = new EventSystem();
+
+        // Object 1 subscribes to Event-A
+        eventSystem.RegisterHandler("Event-A", data => Console.WriteLine($"Object 1 received Event-A: {data}"));
+
+        // Object 2 subscribes to Event-B
+        eventSystem.RegisterHandler("Event-B", data => Console.WriteLine($"Object 2 received Event-B: {data}"));
+
+        // Object 3 subscribes to Event-A
+        eventSystem.RegisterHandler("Event-A", data => Console.WriteLine($"Object 3 received Event-A: {data}"));
+
+        // Simulate raising events
+        eventSystem.RaiseEvent("Event-A", "Event-A Data 1");
+        eventSystem.RaiseEvent("Event-B", "Event-B Data 1");
+
+        // Object 1 unsubscribes from Event-A
+        eventSystem.UnregisterHandler("Event-A", data => Console.WriteLine($"Object 1 received Event-A: {data}"));
+
+        // Simulate raising events after unsubscription
+        eventSystem.RaiseEvent("Event-A", "Event-A Data 2");
+    }
+}
