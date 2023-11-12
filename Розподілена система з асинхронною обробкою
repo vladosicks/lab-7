@@ -1,0 +1,44 @@
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+
+class DistributedSystemNode
+{
+    private bool isActive;
+
+    public event EventHandler<string> MessageReceived;
+
+    public async Task StartAsync()
+    {
+        isActive = true;
+
+        // Start asynchronous message processing
+        await Task.Run(() => ProcessMessages());
+    }
+
+    public void Stop()
+    {
+        isActive = false;
+    }
+
+    public async Task SendMessageAsync(DistributedSystemNode destination, string message)
+    {
+        await Task.Run(() => destination.ReceiveMessage(message));
+    }
+
+    private void ReceiveMessage(string message)
+    {
+        Console.WriteLine($"Received message: {message}");
+        MessageReceived?.Invoke(this, message);
+    }
+
+    private async void ProcessMessages()
+    {
+        while (isActive)
+        {
+            // Asynchronously process incoming messages
+            await Task.Delay(1000);
+        }
+    }
+}
